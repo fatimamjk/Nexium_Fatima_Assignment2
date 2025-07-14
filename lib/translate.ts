@@ -32,6 +32,30 @@ export async function translateToUrdu(text: string): Promise<string> {
     return null;
   };
 
+  const translateWithMyMemory = async (longText: string): Promise<string> => {
+    const chunks: string[] = [];
+    for (let i = 0; i < longText.length; i += 500) {
+      chunks.push(longText.slice(i, i + 500));
+    }
+
+    const translations = await Promise.all(
+      chunks.map(async (chunk) => {
+        try {
+          const res = await fetch(
+            `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=en|ur`
+          );
+          const data = await res.json();
+          return data?.responseData?.translatedText || '[Chunk failed]';
+        } catch (err) {
+          console.error('Chunk translation failed:', err);
+          return '[Chunk failed]';
+        }
+      })
+    );
+
+    return translations.join(' ');
+  };
+
   try {
     if (!text) {
       console.warn('No text provided for translation');
@@ -39,7 +63,7 @@ export async function translateToUrdu(text: string): Promise<string> {
     }
 
     console.log('Attempting Urdu translation with LibreTranslate...');
-    const libreResult = await tryTranslate('https://libretranslate.de/translate', {
+    const libreResult = await tryTranslate('https://libretranslate.com/translate', {
       q: text,
       source: 'en',
       target: 'ur',
@@ -52,13 +76,7 @@ export async function translateToUrdu(text: string): Promise<string> {
     }
 
     console.warn('LibreTranslate failed, falling back to MyMemory...');
-    const myMemoryRes = await fetch(
-      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
-        text
-      )}&langpair=en|ur`
-    );
-    const myMemoryData = await myMemoryRes.json();
-    const myMemoryTranslated = myMemoryData?.responseData?.translatedText;
+    const myMemoryTranslated = await translateWithMyMemory(text);
 
     if (myMemoryTranslated) {
       console.log('MyMemory translation successful');
