@@ -1,5 +1,5 @@
 export async function translateToUrdu(text: string): Promise<string> {
-   const tryTranslate = async (
+  const tryTranslate = async (
     url: string,
     body: object,
     retries = 3,
@@ -15,7 +15,7 @@ export async function translateToUrdu(text: string): Promise<string> {
 
         if (!res.ok) {
           const html = await res.text();
-          console.error(` Attempt ${attempt} failed:`, html);
+          console.error(`Attempt ${attempt} failed:`, html);
           if (attempt === retries) return null;
           await new Promise((resolve) => setTimeout(resolve, delay));
           continue;
@@ -39,7 +39,6 @@ export async function translateToUrdu(text: string): Promise<string> {
     }
 
     console.log('Attempting Urdu translation with LibreTranslate...');
-    // Try LibreTranslate first
     const libreResult = await tryTranslate('https://libretranslate.de/translate', {
       q: text,
       source: 'en',
@@ -53,24 +52,23 @@ export async function translateToUrdu(text: string): Promise<string> {
     }
 
     console.warn('LibreTranslate failed, falling back to MyMemory...');
-    // Fallback to MyMemory API
-    const myMemoryResult = await tryTranslate(
-      'https://api.mymemory.translated.net/get',
-      {
-        q: text,
-        langpair: 'en|ur',
-      }
+    const myMemoryRes = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
+        text
+      )}&langpair=en|ur`
     );
+    const myMemoryData = await myMemoryRes.json();
+    const myMemoryTranslated = myMemoryData?.responseData?.translatedText;
 
-    if (myMemoryResult) {
-      console.log('✅ MyMemory translation successful');
-      return myMemoryResult;
+    if (myMemoryTranslated) {
+      console.log('MyMemory translation successful');
+      return myMemoryTranslated;
     }
 
-    console.warn(' All translation attempts failed');
-    return text + ' [ Urdu translation failed]';
+    console.warn('All translation attempts failed');
+    return text + ' [Urdu translation failed]';
   } catch (error) {
-    console.error(' Translation error:', error);
-    return text + ' [ Urdu translation failed]';
+    console.error('Translation error:', error);
+    return text + ' [Urdu translation failed]';
   }
 }
